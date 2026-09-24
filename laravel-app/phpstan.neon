@@ -9,5 +9,6 @@ parameters:
         - config/
         - database/
         - routes/
+        - tests
 
     level: 7
