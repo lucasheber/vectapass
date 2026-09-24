@@ -1,0 +1,278 @@
+# Ambiente local do SaaS de eventos.
+# Sobe tudo com: docker compose up -d
+# Credenciais padrão (sobrescreva com um .env ou variáveis de ambiente):
+#   Postgres  vectapass / vectapass  (banco vectapass)
+#   RabbitMQ  vectapass / vectapass
+#   Grafana   admin / admin
+
+name: vectapass
+
+networks:
+  vectapass:
+    name: vectapass
+    driver: bridge
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  qdrant_data:
+  loki_data:
+  grafana_data:
+  alloy_data:
+
+configs:
+  loki_config:
+    content: |
+      auth_enabled: false
+
+      server:
+        http_listen_port: 3100
+        grpc_listen_port: 9096
+        log_level: info
+
+      common:
+        instance_addr: 127.0.0.1
+        path_prefix: /loki
+        storage:
+          filesystem:
+            chunks_directory: /loki/chunks
+            rules_directory: /loki/rules
+        replication_factor: 1
+        ring:
+          kvstore:
+            store: inmemory
+
+      query_range:
+        results_cache:
+          cache:
+            embedded_cache:
+              enabled: true
+              max_size_mb: 100
+
+      schema_config:
+        configs:
+          - from: 2020-10-24
+            store: tsdb
+            object_store: filesystem
+            schema: v13
+            index:
+              prefix: index_
+              period: 24h
+
+      limits_config:
+        allow_structured_metadata: true
+        volume_enabled: true
+        ingestion_rate_mb: 16
+        ingestion_burst_size_mb: 32
+
+      analytics:
+        reporting_enabled: false
+
+  grafana_datasources:
+    content: |
+      apiVersion: 1
+
+      datasources:
+        - name: Loki
+          uid: loki
+          type: loki
+          access: proxy
+          url: http://loki:3100
+          isDefault: true
+          editable: false
+          jsonData:
+            maxLines: 1000
+
+  alloy_config:
+    content: |
+      discovery.docker "containers" {
+        host = "unix:///var/run/docker.sock"
+      }
+
+      discovery.relabel "containers" {
+        targets = []
+
+        rule {
+          source_labels = ["__meta_docker_container_name"]
+          regex         = "/(.*)"
+          target_label  = "container"
+        }
+
+        rule {
+          source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+          target_label  = "service"
+        }
+
+        rule {
+          source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+          target_label  = "project"
+        }
+
+        rule {
+          source_labels = ["__meta_docker_container_log_stream"]
+          target_label  = "stream"
+        }
+      }
+
+      loki.source.docker "containers" {
+        host          = "unix:///var/run/docker.sock"
+        targets       = discovery.docker.containers.targets
+        labels        = { environment = "local" }
+        relabel_rules = discovery.relabel.containers.rules
+        forward_to    = [loki.write.local.receiver]
+      }
+
+      loki.write "local" {
+        endpoint {
+          url = "http://loki:3100/loki/api/v1/push"
+        }
+      }
+
+services:
+  # Banco relacional principal da aplicação.
+  postgres:
+    image: postgres:16
+    container_name: vectapass-postgres
+    restart: unless-stopped
+    networks:
+      - vectapass
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vectapass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vectapass}
+      POSTGRES_DB: ${POSTGRES_DB:-vectapass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Mensageria assíncrona. 5672 é o AMQP; 15672 é o painel de gerenciamento.
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: vectapass-rabbitmq
+    hostname: rabbitmq
+    restart: unless-stopped
+    networks:
+      - vectapass
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-vectapass}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-vectapass}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Banco vetorial do RAG. 6333 é a API REST; 6334 é o gRPC.
+  qdrant:
+    image: qdrant/qdrant:v1.19.1
+    container_name: vectapass-qdrant
+    restart: unless-stopped
+    networks:
+      - vectapass
+    ports:
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
+    environment:
+      QDRANT__LOG_LEVEL: ${QDRANT_LOG_LEVEL:-INFO}
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # Agregador de logs. Modo monolítico, com dados em volume nomeado.
+  loki:
+    image: grafana/loki:3.7.3
+    container_name: vectapass-loki
+    restart: unless-stopped
+    user: "0"
+    networks:
+      - vectapass
+    ports:
+      - "127.0.0.1:3100:3100"
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    configs:
+      - source: loki_config
+        target: /etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+    healthcheck:
+      test: ["CMD", "/usr/bin/loki", "-health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Coleta os logs dos containers desta rede e envia para o Loki.
+  # O Promtail chegou ao fim de vida; o Alloy é o coletor atual.
+  alloy:
+    image: grafana/alloy:v1.19.2
+    container_name: vectapass-alloy
+    restart: unless-stopped
+    networks:
+      - vectapass
+    ports:
+      - "127.0.0.1:12345:12345"
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    configs:
+      - source: alloy_config
+        target: /etc/alloy/config.alloy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_data:/var/lib/alloy/data
+    depends_on:
+      loki:
+        condition: service_healthy
+
+  # Painel de observabilidade, já provisionado com o Loki como datasource.
+  grafana:
+    image: grafana/grafana:13.2.1
+    container_name: vectapass-grafana
+    restart: unless-stopped
+    user: "0"
+    networks:
+      - vectapass
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+    configs:
+      - source: grafana_datasources
+        target: /etc/grafana/provisioning/datasources/loki.yml
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
