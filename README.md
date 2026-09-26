@@ -1,5 +1,7 @@
 # VectaPass
 
+**Português** · [English](README.en.md)
+
 ![em desenvolvimento](https://img.shields.io/badge/status-em%20desenvolvimento-d97706?style=flat-square)
 
 ![PHP](https://img.shields.io/badge/PHP-777BB4?style=for-the-badge&logo=php&logoColor=white)
