@@ -6,6 +6,8 @@ namespace App\Infrastructure\Repositories;
 
 use App\Domain\Entities\Event;
 use App\Domain\Repository\EventRepositoryInterface;
+use App\Domain\ValueObjects\EventDate;
+use App\Domain\ValueObjects\Price;
 use App\Infrastructure\Models\Event as EventModel;
 
 class EventEloquentRepository implements EventRepositoryInterface
@@ -22,8 +24,16 @@ class EventEloquentRepository implements EventRepositoryInterface
         ]);
     }
 
-    public function findById(string $id): ?Event
+    public function findById(string $id): Event
     {
-        return EventModel::findOrFail($id);
+        $event = EventModel::findOrFail($id);
+
+        return Event::create(
+            id: $event->id,
+            name: $event->name,
+            date: new EventDate($event->date),
+            price: new Price($event->price, $event->currency),
+            documentPath: $event->document_path,
+        );
     }
 }
