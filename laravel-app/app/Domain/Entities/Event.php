@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace App\Domain\Entities;
 
 use App\Domain\ValueObjects\EventDate;
+use App\Domain\ValueObjects\Identifier;
 use App\Domain\ValueObjects\Price;
 use DomainException;
 
 final readonly class Event
 {
-    private const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i';
 
     private function __construct(
-        private string $id,
+        private Identifier $id,
         private string $name,
         private EventDate $date,
         private Price $price,
@@ -23,7 +23,7 @@ final readonly class Event
     }
 
     public static function create(
-        string $id,
+        Identifier $id,
         string $name,
         EventDate $date,
         Price $price,
@@ -40,10 +40,6 @@ final readonly class Event
 
     public function validate(): void
     {
-        if (preg_match(self::UUID_PATTERN, $this->id) !== 1) {
-            throw new DomainException('The event identifier must be a valid UUID.');
-        }
-
         if ($this->name === '') {
             throw new DomainException('The event name is required.');
         }
@@ -53,7 +49,7 @@ final readonly class Event
         }
     }
 
-    public function id(): string
+    public function id(): Identifier
     {
         return $this->id;
     }

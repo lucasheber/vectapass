@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 use App\Domain\Entities\Event;
 use App\Domain\ValueObjects\EventDate;
+use App\Domain\ValueObjects\Identifier;
 use App\Domain\ValueObjects\Price;
 use Faker\Provider\Uuid;
 
 describe('Event', function (): void {
     it('should create an event', function (): void {
-
         $event = Event::create(
-            id: Uuid::uuid(),
+            id: Identifier::create(Uuid::uuid()),
             name: 'Test Event',
             date: new EventDate(new DateTimeImmutable('now +1 day')),
             price: new Price(100),
         );
 
         expect($event)->toBeInstanceOf(Event::class);
-        expect($event->id())->toBeString();
+        expect($event->id()->value())->toBe($event->id()->value());
         expect($event->name())->toBeString();
         expect($event->date())->toBeInstanceOf(EventDate::class);
         expect($event->price())->toBeInstanceOf(Price::class);
@@ -29,7 +29,7 @@ describe('Event', function (): void {
         $this->expectException(DomainException::class);
         $this->expectExceptionMessageIsOrContains('The event name is required.');
         Event::create(
-            id: Uuid::uuid(),
+            id: Identifier::create(Uuid::uuid()),
             name: '',
             date: new EventDate(new DateTimeImmutable('now +1 day')),
             price: new Price(100),
@@ -40,7 +40,7 @@ describe('Event', function (): void {
         $this->expectException(DomainException::class);
         $this->expectExceptionMessageIsOrContains('The document path cannot be empty.');
         Event::create(
-            id: Uuid::uuid(),
+            id: Identifier::create(Uuid::uuid()),
             name: 'Test Event',
             date: new EventDate(new DateTimeImmutable('now +1 day')),
             price: new Price(100),
