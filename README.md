@@ -19,7 +19,7 @@
 
 SaaS de eventos em que o PDF de regras do organizador vira a fonte das respostas ao participante. O Laravel é o dono do domínio: evento, ingresso, preço e data. Um serviço Python faz o RAG: fatia o documento, persiste os vetores no Qdrant e responde com o Ollama. Indexar o PDF é assíncrono, via RabbitMQ. Responder uma pergunta é síncrono, via HTTP, porque tem alguém esperando na tela.
 
-O repositório está em desenvolvimento. A infraestrutura local e o núcleo de domínio do evento já existem. O motor de IA, a mensageria entre os dois serviços e o chat ainda são escopo.
+O repositório está em desenvolvimento. A infraestrutura local está no ar e o domínio (evento, ingresso e identidade) está fechado. O motor de IA, a mensageria entre os dois serviços e o chat ainda são escopo.
 
 ## Arquitetura
 
@@ -63,16 +63,17 @@ O Python não escreve na tabela de eventos. Ele lê a mensagem, trata o arquivo 
 | | Área | Entrega | Estado |
 | --- | --- | --- | --- |
 | TSK-001 | Infraestrutura | Compose com Postgres, RabbitMQ, Qdrant, Loki, Grafana e Alloy na rede `vectapass` | ![No ar][no-ar] |
-| TSK-002 | Domínio | `Event`, `EventDate` e `Price` em PHP puro. `Ticket` ainda entra | ![Em progresso][em-progresso] |
+| TSK-002 | Domínio | `Event`, `Ticket`, `EventDate`, `Price` e `Identifier` em PHP puro | ![Concluída][concluida] |
 | TSK-003 | Aplicação | `CreateEventUseCase` persiste pela interface de repositório. O PDF ainda é um caminho, sem pipeline de arquivo | ![Em progresso][em-progresso] |
 | TSK-004 | Python | FastAPI com `/health` e cliente do Ollama local | ![Previsto][previsto] |
 | TSK-005 | Mensageria | Laravel publica no RabbitMQ e o Python consome em background | ![Previsto][previsto] |
 | TSK-006 | RAG | LangChain fatia o PDF e persiste os vetores no Qdrant | ![Previsto][previsto] |
 | TSK-007 | Chat | Laravel encaminha a pergunta; Python consulta Qdrant e Ollama | ![Previsto][previsto] |
 | TSK-008 | Observabilidade | Alloy já coleta log dos containers para o Loki. Falta o JSON emitido por PHP e Python | ![Em progresso][em-progresso] |
-| TSK-009 | Testes | Pest cobre `Event`, `EventDate`, `Price` e o repositório. Falta o teste de fatiamento no Python | ![Em progresso][em-progresso] |
+| TSK-009 | Testes | Pest cobre `Event`, `Ticket`, `Identifier`, `EventDate`, `Price` e o repositório. Falta o teste de fatiamento no Python | ![Em progresso][em-progresso] |
 
 [no-ar]: https://img.shields.io/badge/no%20ar-15803d?style=flat-square
+[concluida]: https://img.shields.io/badge/conclu%C3%ADda-15803d?style=flat-square
 [em-progresso]: https://img.shields.io/badge/em%20progresso-d97706?style=flat-square
 [previsto]: https://img.shields.io/badge/previsto-64748b?style=flat-square
 

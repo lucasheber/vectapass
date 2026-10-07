@@ -19,7 +19,7 @@
 
 Event SaaS where the organizer's rules PDF becomes the source of answers for attendees. Laravel owns the domain: event, ticket, price, and date. A Python service runs the RAG pipeline: it splits the document, stores vectors in Qdrant, and answers with Ollama. Indexing the PDF is asynchronous, through RabbitMQ. Answering a question is synchronous HTTP, because someone is waiting on the screen.
 
-The repository is in development. Local infrastructure and the event domain core are in place. The AI engine, messaging between the two services, and the chat are still in scope.
+The repository is in development. Local infrastructure is up and the domain (event, ticket, and identity) is done. The AI engine, messaging between the two services, and the chat are still in scope.
 
 ## Architecture
 
@@ -63,16 +63,17 @@ Python reads the message, handles the file, and writes only to Qdrant. Prompt, c
 | | Area | Delivery | Status |
 | --- | --- | --- | --- |
 | TSK-001 | Infrastructure | Compose with Postgres, RabbitMQ, Qdrant, Loki, Grafana, and Alloy on the `vectapass` network | ![Live][live] |
-| TSK-002 | Domain | `Event`, `EventDate`, and `Price` in plain PHP. `Ticket` is still to come | ![In progress][in-progress] |
+| TSK-002 | Domain | `Event`, `Ticket`, `EventDate`, `Price`, and `Identifier` in plain PHP | ![Done][done] |
 | TSK-003 | Application | `CreateEventUseCase` persists through a repository interface. The PDF is still a path, with no file pipeline | ![In progress][in-progress] |
 | TSK-004 | Python | FastAPI with `/health` and a client for local Ollama | ![Planned][planned] |
 | TSK-005 | Messaging | Laravel publishes to RabbitMQ and Python consumes in the background | ![Planned][planned] |
 | TSK-006 | RAG | LangChain splits the PDF and persists vectors in Qdrant | ![Planned][planned] |
 | TSK-007 | Chat | Laravel forwards the question; Python queries Qdrant and Ollama | ![Planned][planned] |
 | TSK-008 | Observability | Alloy already ships container logs to Loki. JSON emitted by PHP and Python is still missing | ![In progress][in-progress] |
-| TSK-009 | Tests | Pest covers `Event`, `EventDate`, `Price`, and the repository. The Python chunking test is still missing | ![In progress][in-progress] |
+| TSK-009 | Tests | Pest covers `Event`, `Ticket`, `Identifier`, `EventDate`, `Price`, and the repository. The Python chunking test is still missing | ![In progress][in-progress] |
 
 [live]: https://img.shields.io/badge/live-15803d?style=flat-square
+[done]: https://img.shields.io/badge/done-15803d?style=flat-square
 [in-progress]: https://img.shields.io/badge/in%20progress-d97706?style=flat-square
 [planned]: https://img.shields.io/badge/planned-64748b?style=flat-square
 
