@@ -11,7 +11,6 @@ use DomainException;
 
 final readonly class Event
 {
-
     private function __construct(
         private Identifier $id,
         private string $name,

@@ -31,6 +31,7 @@ class CreateEventUseCase
         );
 
         $this->eventRepository->save($event);
+
         return $event;
     }
 }

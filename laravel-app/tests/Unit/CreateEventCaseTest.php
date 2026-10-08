@@ -8,7 +8,7 @@ use Tests\Support\FakeEventRepository;
 
 describe('CreateEventCase', function () {
     it('should create an event', function () {
-        $repository = new FakeEventRepository();
+        $repository = new FakeEventRepository;
         $useCase = new CreateEventUseCase($repository);
         $date = date('Y-m-d', strtotime('now +1 day'));
 

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Entities;
 
 use App\Domain\ValueObjects\Identifier;
-use DomainException;
 
 final class Ticket
 {
