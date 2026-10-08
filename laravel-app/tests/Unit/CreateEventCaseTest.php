@@ -6,8 +6,8 @@ use App\Application\UseCases\CreateEventUseCase;
 use App\Domain\Entities\Event;
 use Tests\Support\FakeEventRepository;
 
-describe('CreateEventCase', function () {
-    it('should create an event', function () {
+describe('CreateEventCase', function (): void {
+    it('should create an event', function (): void {
         $repository = new FakeEventRepository;
         $useCase = new CreateEventUseCase($repository);
         $date = date('Y-m-d', strtotime('now +1 day'));
