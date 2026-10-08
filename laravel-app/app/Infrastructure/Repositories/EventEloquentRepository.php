@@ -30,7 +30,7 @@ class EventEloquentRepository implements EventRepositoryInterface
         $event = EventModel::findOrFail($id);
 
         return Event::create(
-            id: Identifier::create($event->id),
+            id: Identifier::create($id),
             name: $event->name,
             date: new EventDate($event->date),
             price: new Price($event->price, $event->currency),
